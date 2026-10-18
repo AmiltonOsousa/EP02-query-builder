@@ -76,3 +76,42 @@
     (let [[_ n] estagio]
       (fn [registros]
         (take n registros)))))
+
+    
+(defn compilar-terminal
+  [terminal]
+  (case (first terminal)
+    :selecionar
+    (let [[_ campos] terminal]
+      (fn [registros]
+        (map (fn [registro]
+               (select-keys registro campos))
+             registros)))
+
+    :contar
+    (fn [registros]
+      (count registros))
+
+    :soma
+    (let [[_ campo] terminal]
+      (fn [registros]
+        (reduce + 0 (map campo registros))))
+
+    :media
+    (let [[_ campo] terminal]
+      (fn [registros]
+        (let [valores (map campo registros)]
+          (if (seq valores)
+            (/ (reduce + 0 valores)
+               (count valores))
+            0))))
+
+    :agrupar-por
+    (let [[_ campo agregacao] terminal
+          executar-agregacao (compilar-terminal agregacao)]
+      (fn [registros]
+        (into {}
+              (map (fn [[chave grupo]]
+                     [chave (executar-agregacao grupo)])
+                   (group-by campo registros)))))))
+

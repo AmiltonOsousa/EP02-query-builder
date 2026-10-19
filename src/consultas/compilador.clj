@@ -66,11 +66,12 @@
         (filter avaliar registros)))
 
     :ordenar-por
-    (let [[_ campo ordem] estagio]
+    (let [[_ campo ordem] estagio
+          comparador (if (= ordem :desc)
+                       (fn [a b] (compare b a))
+                       compare)]
       (fn [registros]
-        (sort-by campo
-                 (if (= ordem :desc) > <)
-                 registros)))
+        (sort-by campo comparador registros)))
 
     :limitar
     (let [[_ n] estagio]
@@ -102,9 +103,9 @@
       (fn [registros]
         (let [valores (map campo registros)]
           (if (seq valores)
-            (/ (reduce + 0 valores)
-               (count valores))
-            0))))
+            (double (/ (reduce + 0 valores)
+                       (count valores)))
+            0.0))))
 
     :agrupar-por
     (let [[_ campo agregacao] terminal

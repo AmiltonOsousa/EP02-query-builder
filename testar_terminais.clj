@@ -23,7 +23,7 @@
 
    {:nome "Calcular media"
     :terminal [:media :nota]
-    :esperado 7}
+    :esperado 7.0}
 
    {:nome "Agrupar por genero e contar"
     :terminal [:agrupar-por :genero [:contar]]

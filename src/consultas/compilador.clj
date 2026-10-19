@@ -4,15 +4,24 @@
 (defn compilar-expressao
   [expr]
   (case (first expr)
+
     :=
     (let [[_ campo valor] expr]
       (fn [registro]
-        (= (get registro campo) valor)))
+        (let [valor-registro (get registro campo)]
+          (if (and (number? valor-registro)
+                   (number? valor))
+            (== valor-registro valor)
+            (= valor-registro valor)))))
 
     :!=
     (let [[_ campo valor] expr]
       (fn [registro]
-        (not= (get registro campo) valor)))
+        (let [valor-registro (get registro campo)]
+          (if (and (number? valor-registro)
+                   (number? valor))
+            (not (== valor-registro valor))
+            (not= valor-registro valor)))))
 
     :<
     (let [[_ campo valor] expr]

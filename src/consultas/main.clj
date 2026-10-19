@@ -12,8 +12,15 @@
                    (to-array [(double valor)]))
     (str valor)))
 
+(defn- imprimir-registro
+  [registro campos]
+  (println
+   (str/join "; "
+             (map #(formatar-valor (get registro %))
+                  campos))))
+
 (defn- imprimir-resultado
-  [resultado]
+  [resultado esquema]
   (cond
     (and (map? resultado) (contains? resultado :erros))
     (doseq [erro (:erros resultado)]
@@ -26,46 +33,56 @@
     (if (empty? resultado)
       (println "(vazio)")
       (doseq [[chave valor] (sort-by key resultado)]
-        (println (str (name chave) ": " (formatar-valor valor)))))
+        (println (str (formatar-valor chave)
+                      "; "
+                      (formatar-valor valor)))))
 
     (seq resultado)
-    (doseq [registro resultado]
-      (println
-       (str/join
-        " | "
-        (map (fn [[campo valor]]
-               (str (name campo) ": " (formatar-valor valor)))
-             registro))))
+    (let [campos (if (seq resultado)
+                   (keys (first resultado))
+                   (map first esquema))]
+      (doseq [registro resultado]
+        (imprimir-registro registro campos)))
 
     :else
     (println "(vazio)")))
-
 
 (defn -main
   [& args]
   (try
     (let [caminho (or (first args) "dados/filmes.csv")
-          dados (csv/ler-csv caminho)]
+          dados (csv/ler-csv caminho)
+          campos (map first (:esquema dados))]
       (loop []
         (print "> ")
         (flush)
         (when-let [linha (read-line)]
           (let [entrada (str/trim linha)]
             (cond
-              (= (str/upper-case entrada) "EXIT")
+              (= entrada "EXIT")
               nil
 
               (str/blank? entrada)
               (do
-                (println "ERRO: consulta vazia.")
+                (println "ERRO: linha em branco.")
                 (recur))
 
-              (str/starts-with? (str/upper-case entrada) "QUERY ")
+              (= entrada "QUERY")
+              (do
+                (imprimir-resultado (:registros dados) (:esquema dados))
+                (recur))
+
+              (str/starts-with? entrada "QUERY ")
               (do
                 (try
-                  (let [consulta (subs entrada 6)
+                  (let [consulta (str/trim (subs entrada 6))
                         resultado (core/executar consulta dados)]
-                    (imprimir-resultado resultado))
+                    (if (and (map? resultado)
+                             (contains? resultado :erros))
+                      (imprimir-resultado resultado (:esquema dados))
+                      (if (seq (:terminal consulta))
+                        (imprimir-resultado resultado (:esquema dados))
+                        (imprimir-resultado resultado (:esquema dados)))))
                   (catch Exception e
                     (println (str "ERRO: " (.getMessage e)))))
                 (recur))

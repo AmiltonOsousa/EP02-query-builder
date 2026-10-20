@@ -79,8 +79,9 @@
          {:nome nome :ok true})))
    testes-invalidos))
 
-(doseq [{:keys [nome ok]} resultados-invalidos]
-  (println (if ok "PASSOU" "FALHOU") "-" nome))
+(run! (fn [{:keys [nome ok]}]
+        (println (if ok "PASSOU" "FALHOU") "-" nome))
+      resultados-invalidos)
 
 (println "Erros rejeitados:"
          (count (filter :ok resultados-invalidos))
@@ -101,11 +102,12 @@
          {:nome nome :ok false :erro (.getMessage e)})))
    testes))
 
-(doseq [{:keys [nome ok esperado obtido erro]} resultados]
-  (println (if ok "PASSOU" "FALHOU") "-" nome)
-  (when-not ok
-    (println "  Esperado:" esperado)
-    (println "  Obtido:" (or obtido erro))))
+(run! (fn [{:keys [nome ok esperado obtido erro]}]
+        (println (if ok "PASSOU" "FALHOU") "-" nome)
+        (when-not ok
+          (println "  Esperado:" esperado)
+          (println "  Obtido:" (or obtido erro))))
+      resultados)
 
 (println "Resultado:"
          (count (filter :ok resultados))

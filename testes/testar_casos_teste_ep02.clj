@@ -176,22 +176,23 @@
       (is (str/includes? resultado "titulo")))))
 
 (deftest erros-de-sintaxe
-  (doseq [consulta ["|"
-                    "voar"
-                    "onde titulo contem \"de\""
-                    "pular 2"
-                    "limitar abc"
-                    "contar | limitar 2"
-                    "selecionar titulo | onde ano > 2000"
-                    "selecionar titulo | contar"
-                    "minimo ano"
-                    "onde (ano > 2000"
-                    "ordenar ano"
-                    "agrupar por genero"
-                    "onde ano >"]]
-    (testing (str "Consulta inválida: " consulta)
-      (is (string? (executar-seguro consulta))
-          (str "A consulta deveria ser recusada: " consulta)))))
+  (run! (fn [consulta]
+          (testing (str "Consulta inválida: " consulta)
+            (is (string? (executar-seguro consulta))
+                (str "A consulta deveria ser recusada: " consulta))))
+        ["|"
+         "voar"
+         "onde titulo contem \"de\""
+         "pular 2"
+         "limitar abc"
+         "contar | limitar 2"
+         "selecionar titulo | onde ano > 2000"
+         "selecionar titulo | contar"
+         "minimo ano"
+         "onde (ano > 2000"
+         "ordenar ano"
+         "agrupar por genero"
+         "onde ano >"]))
 
 (deftest campos-exigidos-nos-erros
   (testing "Erro de campo inexistente cita o campo"

@@ -144,17 +144,29 @@ Exemplo de consulta:
 onde nota >= 8 | ordenar por nota desc | selecionar titulo, nota
 ```
 
-Representação ilustrativa da AST:
+AST correspondente:
 
 ```clojure
 {:estagios
- [[:onde [:= :nota 8]]
+ [[:onde [:>= :nota 8]]
   [:ordenar-por :nota :desc]]
  :terminal
  [:selecionar [:titulo :nota]]}
 ```
 
+Nós possíveis:
+
+- Estágios (vetor `:estagios`): `[:onde expr]`, `[:ordenar-por campo :asc|:desc]`, `[:limitar n]`.
+- Expressões: `[:= campo literal]` (idem `:!=`, `:<`, `:<=`, `:>`, `:>=`), `[:e a b]`, `[:ou a b]`, `[:nao a]`.
+- Terminal (`:terminal`, ou `nil`): `[:selecionar [campos]]`, `[:contar]`, `[:soma campo]`, `[:media campo]`, `[:agrupar-por campo agregacao]`, onde `agregacao` é `[:contar]`, `[:soma campo]` ou `[:media campo]`.
+
+Para testar um nó desconhecido, basta usar um tipo inexistente, por exemplo `{:estagios [[:voar 1]] :terminal nil}`; a execução falha nomeando o nó (`:voar`).
+
 A AST mantém a consulta em formato de dados, permitindo validar e compilar suas etapas antes da execução.
+
+## Query builder
+
+As funções de `consultas.core` recebem uma consulta e devolvem outra, sem alterar a original: `consulta`, `onde`, `selecionar`, `ordenar-por`, `limitar`, `contar`, `soma`, `media`, `agrupar-por`, `analisar` (texto para AST) e `executar`. Acrescentar um estágio depois do elemento final torna a consulta inválida, e `executar` devolve `{:erros [...]}`.
 
 ## Organização do projeto
 

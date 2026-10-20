@@ -8,12 +8,23 @@
   {:estagios []
    :terminal nil})
 
+(defn- registrar-invalida
+  [c motivo]
+  (update c :invalida (fnil conj []) motivo))
+
 (defn- adicionar-estagio
   [c estagio]
   (if (:terminal c)
-    (throw (ex-info "Nao e permitido adicionar estagios depois do terminal."
-                    {:terminal (:terminal c)}))
+    (registrar-invalida c (str "estagio " (name (first estagio))
+                               " depois do elemento final"))
     (update c :estagios conj estagio)))
+
+(defn- definir-terminal
+  [c terminal]
+  (if (:terminal c)
+    (registrar-invalida c (str (name (first terminal))
+                               " depois do elemento final"))
+    (assoc c :terminal terminal)))
 
 (defn onde
   [c expr]
@@ -21,10 +32,7 @@
 
 (defn selecionar
   [c campos]
-  (if (:terminal c)
-    (throw (ex-info "A consulta ja possui um terminal."
-                    {:terminal (:terminal c)}))
-    (assoc c :terminal [:selecionar campos])))
+  (definir-terminal c [:selecionar campos]))
 
 (defn ordenar-por
   [c campo ordem]
@@ -36,31 +44,23 @@
 
 (defn contar
   [c]
-  (if (:terminal c)
-    (throw (ex-info "A consulta ja possui um terminal."
-                    {:terminal (:terminal c)}))
-    (assoc c :terminal [:contar])))
+  (definir-terminal c [:contar]))
 
 (defn soma
   [c campo]
-  (if (:terminal c)
-    (throw (ex-info "A consulta ja possui um terminal."
-                    {:terminal (:terminal c)}))
-    (assoc c :terminal [:soma campo])))
+  (definir-terminal c [:soma campo]))
 
 (defn media
   [c campo]
-  (if (:terminal c)
-    (throw (ex-info "A consulta ja possui um terminal."
-                    {:terminal (:terminal c)}))
-    (assoc c :terminal [:media campo])))
+  (definir-terminal c [:media campo]))
 
 (defn agrupar-por
   [c campo agregacao]
-  (if (:terminal c)
-    (throw (ex-info "A consulta ja possui um terminal."
-                    {:terminal (:terminal c)}))
-    (assoc c :terminal [:agrupar-por campo agregacao])))
+  (definir-terminal c [:agrupar-por campo agregacao]))
+
+(defn analisar
+  [texto]
+  (sintaxe/analisar texto))
 
 (defn- normalizar-campo
   [campo]
@@ -186,10 +186,11 @@
                    [])))
          []
          (:estagios c))]
-    (into erros-estagios
-          (if (:terminal c)
-            (validar-terminal (:terminal c) esquema)
-            []))))
+    (-> erros-estagios
+        (into (:invalida c))
+        (into (if (:terminal c)
+                (validar-terminal (:terminal c) esquema)
+                [])))))
 
 (defn executar
   [c dados]

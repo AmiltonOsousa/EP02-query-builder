@@ -42,7 +42,7 @@
 
 (defn ler-csv
   [caminho]
-  (let [linhas (str/split-lines (slurp caminho))]
+  (let [linhas (remove str/blank? (str/split-lines (slurp caminho)))]
     (when (empty? linhas)
       (throw (ex-info "O arquivo CSV esta vazio." {})))
     (let [esquema (analisar-cabecalho (first linhas))

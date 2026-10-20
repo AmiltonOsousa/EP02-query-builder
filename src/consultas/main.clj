@@ -2,7 +2,8 @@
 (ns consultas.main
   (:require [clojure.string :as str]
             [consultas.core :as core]
-            [consultas.csv :as csv]))
+            [consultas.csv :as csv]
+            [consultas.sintaxe :as sintaxe]))
 
 (defn- formatar-valor
   [valor]
@@ -19,8 +20,16 @@
              (map #(formatar-valor (get registro %))
                   campos))))
 
+(defn- campos-de-saida
+  "Campos na ordem de saida: a do selecionar ou, sem ele, a do esquema."
+  [ast esquema]
+  (let [[tipo campos] (:terminal ast)]
+    (if (= tipo :selecionar)
+      campos
+      (map first esquema))))
+
 (defn- imprimir-resultado
-  [resultado esquema]
+  [resultado campos]
   (cond
     (and (map? resultado) (contains? resultado :erros))
     (doseq [erro (:erros resultado)]
@@ -38,11 +47,8 @@
                       (formatar-valor valor)))))
 
     (seq resultado)
-    (let [campos (if (seq resultado)
-                   (keys (first resultado))
-                   (map first esquema))]
-      (doseq [registro resultado]
-        (imprimir-registro registro campos)))
+    (doseq [registro resultado]
+      (imprimir-registro registro campos))
 
     :else
     (println "(vazio)")))
@@ -51,8 +57,7 @@
   [& args]
   (try
     (let [caminho (or (first args) "dados/filmes.csv")
-          dados (csv/ler-csv caminho)
-          campos (map first (:esquema dados))]
+          dados (csv/ler-csv caminho)]
       (loop []
         (print "> ")
         (flush)
@@ -67,22 +72,15 @@
                 (println "ERRO: linha em branco.")
                 (recur))
 
-              (= entrada "QUERY")
-              (do
-                (imprimir-resultado (:registros dados) (:esquema dados))
-                (recur))
-
-              (str/starts-with? entrada "QUERY ")
+              (or (= entrada "QUERY")
+                  (str/starts-with? entrada "QUERY "))
               (do
                 (try
-                  (let [consulta (str/trim (subs entrada 6))
-                        resultado (core/executar consulta dados)]
-                    (if (and (map? resultado)
-                             (contains? resultado :erros))
-                      (imprimir-resultado resultado (:esquema dados))
-                      (if (seq (:terminal consulta))
-                        (imprimir-resultado resultado (:esquema dados))
-                        (imprimir-resultado resultado (:esquema dados)))))
+                  (let [ast (sintaxe/analisar (subs entrada 5))
+                        resultado (core/executar ast dados)]
+                    (imprimir-resultado
+                     resultado
+                     (campos-de-saida ast (:esquema dados))))
                   (catch Exception e
                     (println (str "ERRO: " (.getMessage e)))))
                 (recur))

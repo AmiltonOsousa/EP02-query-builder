@@ -127,9 +127,18 @@
 
     (erro-sintaxe "Agregacao desconhecida." tokens)))
 
+(defn- separar-elementos
+  [tokens]
+  (reduce (fn [grupos token]
+            (if (= "|" token)
+              (conj grupos [])
+              (update grupos (dec (count grupos)) conj token)))
+          [[]]
+          tokens))
+
 (defn- analisar-elemento
-  [texto]
-  (let [tokens (vec (tokenizar texto))]
+  [tokens]
+  (let [tokens (vec tokens)]
     (when (empty? tokens)
       (erro-sintaxe "Elemento vazio." tokens))
     (case (first tokens)
@@ -191,10 +200,10 @@
 
 (defn analisar
   [texto]
-  (let [texto (str/trim texto)]
-    (if (empty? texto)
+  (let [tokens (tokenizar texto)]
+    (if (empty? tokens)
       {:estagios [] :terminal nil}
-      (let [partes (str/split texto #"\|" -1)
+      (let [partes (separar-elementos tokens)
             elementos (mapv analisar-elemento partes)
             terminais (keep-indexed
                        (fn [i elemento]

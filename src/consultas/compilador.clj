@@ -1,6 +1,12 @@
 
 (ns consultas.compilador)
 
+(defn- comparar
+  "Aplica teste ao compare entre o campo do registro e o literal.
+  Serve para numeros (inteiro com decimal) e para textos."
+  [teste campo valor registro]
+  (teste (compare (get registro campo) valor)))
+
 (defn compilar-expressao
   [expr]
   (case (first expr)
@@ -25,23 +31,19 @@
 
     :<
     (let [[_ campo valor] expr]
-      (fn [registro]
-        (< (get registro campo) valor)))
+      (partial comparar neg? campo valor))
 
     :<=
     (let [[_ campo valor] expr]
-      (fn [registro]
-        (<= (get registro campo) valor)))
+      (partial comparar (complement pos?) campo valor))
 
     :>
     (let [[_ campo valor] expr]
-      (fn [registro]
-        (> (get registro campo) valor)))
+      (partial comparar pos? campo valor))
 
     :>=
     (let [[_ campo valor] expr]
-      (fn [registro]
-        (>= (get registro campo) valor)))
+      (partial comparar (complement neg?) campo valor))
 
     :e
     (let [[_ esquerda direita] expr
@@ -69,23 +71,19 @@
   [estagio]
   (case (first estagio)
     :onde
-    (let [[_ expr] estagio
-          avaliar (compilar-expressao expr)]
-      (fn [registros]
-        (filter avaliar registros)))
+    (let [[_ expr] estagio]
+      (partial filter (compilar-expressao expr)))
 
     :ordenar-por
     (let [[_ campo ordem] estagio
           comparador (if (= ordem :desc)
                        (fn [a b] (compare b a))
                        compare)]
-      (fn [registros]
-        (sort-by campo comparador registros)))
+      (partial sort-by campo comparador))
 
     :limitar
     (let [[_ n] estagio]
-      (fn [registros]
-        (take n registros)))))
+      (partial take n))))
 
     
 (defn compilar-terminal
@@ -93,28 +91,24 @@
   (case (first terminal)
     :selecionar
     (let [[_ campos] terminal]
-      (fn [registros]
-        (map (fn [registro]
-               (select-keys registro campos))
-             registros)))
+      (partial map #(select-keys % campos)))
 
     :contar
-    (fn [registros]
-      (count registros))
+    (partial reduce (fn [n _] (inc n)) 0)
 
     :soma
     (let [[_ campo] terminal]
-      (fn [registros]
-        (reduce + 0 (map campo registros))))
+      (partial reduce (fn [total registro] (+ total (get registro campo))) 0))
 
     :media
-    (let [[_ campo] terminal]
+    (let [[_ campo] terminal
+          somar (compilar-terminal [:soma campo])
+          contar (compilar-terminal [:contar])]
       (fn [registros]
-        (let [valores (map campo registros)]
-          (if (seq valores)
-            (double (/ (reduce + 0 valores)
-                       (count valores)))
-            0.0))))
+        (let [n (contar registros)]
+          (if (zero? n)
+            0.0
+            (double (/ (somar registros) n))))))
 
     :agrupar-por
     (let [[_ campo agregacao] terminal
